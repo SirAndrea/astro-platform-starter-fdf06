@@ -1,19 +1,313 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import Markdown from '../components/Markdown.astro';
-
-const explainer = `
-An Astro website can go way beyond static pages - on the right platform.
-
-Netlify supports not only [Streaming SSR](https://docs.astro.build/en/guides/server-side-rendering/#html-streaming) and fast [Edge Middleware](https://docs.astro.build/en/guides/middleware/), but also [on-demand revalidation](https://www.netlify.com/blog/cache-tags-and-purge-api-on-netlify/) and [stale-while-revalidate](https://www.netlify.com/blog/swr-and-fine-grained-cache-control/). 
-Any page or data can be rebuilt only when needed, without site visitors ever getting a performance hit.
-`;
+const contractors = ['Rubius', 'Auron'];
 ---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clock In/Out - Contractors</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 40px;
+            font-size: 2.5rem;
+        }
+        .contractors-container {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .contractor-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center;
+            min-width: 280px;
+        }
+        .contractor-name {
+            font-size: 1.8rem;
+            color: #333;
+            margin-bottom: 25px;
+            font-weight: bold;
+        }
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .btn {
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn:active {
+            transform: scale(0.95);
+        }
+        .btn.clicked {
+            animation: buttonPulse 0.4s ease-out;
+        }
+        @keyframes buttonPulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(0.92);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        .btn .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            transform: scale(0);
+            animation: rippleEffect 0.6s linear;
+            pointer-events: none;
+        }
+        @keyframes rippleEffect {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        .btn-clock-in {
+            background: #5DD9C1;
+            color: white;
+        }
+        .btn-clock-in:hover {
+            background: #4BC9B1;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(93, 217, 193, 0.4);
+        }
+        .btn-clock-out {
+            background: #F48FB1;
+            color: white;
+        }
+        .btn-clock-out:hover {
+            background: #EC407A;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 143, 177, 0.4);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            min-height: 45px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .last-action {
+            margin-top: 15px;
+            padding: 12px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #666;
+            min-height: 50px;
+        }
+        .last-action .action-type {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .last-action .action-type.clock-in {
+            color: #4BC9B1;
+        }
+        .last-action .action-type.clock-out {
+            color: #EC407A;
+        }
+        .last-action .action-timestamp {
+            font-size: 0.9rem;
+            color: #333;
+        }
+        .admin-link {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #5DD9C1;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(93, 217, 193, 0.4);
+            transition: all 0.3s ease;
+        }
+        .admin-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(93, 217, 193, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <h1>Control de Asistencia</h1>
 
-<Layout title="Welcome to Astro.">
-    <h1 class="mb-10">Netlify Platform Starter for Astro</h1>
-    <Markdown content={explainer} class="mb-10 text-lg" />
-    <p>
-        <a href="https://docs.netlify.com/frameworks/astro/" class="btn btn-lg sm:min-w-64">Read the Docs</a>
-    </p>
-</Layout>
+    <div class="contractors-container">
+        {contractors.map((contractor) => (
+            <div class="contractor-card" data-contractor={contractor}>
+                <div class="contractor-name">{contractor}</div>
+                <div class="buttons">
+                    <button
+                        class="btn btn-clock-in"
+                        onclick={`clockAction('${contractor}', 'in')`}
+                    >
+                        Clock In
+                    </button>
+                    <button
+                        class="btn btn-clock-out"
+                        onclick={`clockAction('${contractor}', 'out')`}
+                    >
+                        Clock Out
+                    </button>
+                </div>
+                <div class="status" id={`status-${contractor}`}></div>
+                <div class="last-action" id={`last-action-${contractor}`}>
+                    <div class="action-type">Último registro:</div>
+                    <div class="action-timestamp">Sin registros</div>
+                </div>
+            </div>
+        ))}
+    </div>
+
+    <a href="/admin" class="admin-link">Ver Registros</a>
+
+    <script>
+        // Add ripple effect on button click
+        function createRipple(event) {
+            const button = event.currentTarget;
+            const ripple = document.createElement('span');
+            ripple.classList.add('ripple');
+
+            const rect = button.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = (event.clientX - rect.left - size / 2) + 'px';
+            ripple.style.top = (event.clientY - rect.top - size / 2) + 'px';
+
+            button.appendChild(ripple);
+
+            // Add pulse animation class
+            button.classList.add('clicked');
+
+            setTimeout(() => {
+                ripple.remove();
+                button.classList.remove('clicked');
+            }, 600);
+        }
+
+        // Attach ripple to all buttons
+        document.querySelectorAll('.btn').forEach(btn => {
+            btn.addEventListener('click', createRipple);
+        });
+
+        // Format timestamp from server format (YYYY-MM-DDTHH:mm:ss PT) to user-friendly format (DD-MM-YYYY HH:MMam/pm)
+        function formatTimestamp(timestamp) {
+            // Parse the timestamp: 2025-12-30T14:30:45 PT
+            const match = timestamp.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+            if (!match) return timestamp;
+
+            const [, year, month, day, hours, minutes] = match;
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'pm' : 'am';
+            const hour12 = hour === 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+
+            return `${day}-${month}-${year} ${hour12}:${minutes}${ampm} PST`;
+        }
+
+        // Update the last action display for a contractor
+        function updateLastAction(contractor, action, timestamp) {
+            const lastActionEl = document.getElementById(`last-action-${contractor}`);
+            if (!lastActionEl) return;
+
+            const actionTypeEl = lastActionEl.querySelector('.action-type');
+            const actionTimestampEl = lastActionEl.querySelector('.action-timestamp');
+
+            const actionText = action === 'in' ? 'Clock In' : 'Clock Out';
+            const actionClass = action === 'in' ? 'clock-in' : 'clock-out';
+
+            actionTypeEl.textContent = `Último: ${actionText}`;
+            actionTypeEl.className = `action-type ${actionClass}`;
+            actionTimestampEl.textContent = formatTimestamp(timestamp);
+        }
+
+        async function clockAction(contractor, action) {
+            const statusEl = document.getElementById(`status-${contractor}`);
+            const card = document.querySelector(`[data-contractor="${contractor}"]`);
+            const buttons = card.querySelectorAll('.btn');
+
+            buttons.forEach(btn => btn.disabled = true);
+            statusEl.className = 'status';
+            statusEl.textContent = 'Procesando...';
+
+            try {
+                const response = await fetch('/api/clock', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contractor,
+                        action
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusEl.className = 'status success';
+                    const actionText = action === 'in' ? 'Clock In' : 'Clock Out';
+                    statusEl.textContent = `${actionText} registrado!`;
+
+                    // Update the last action display with the timestamp
+                    updateLastAction(contractor, action, data.timestamp);
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = data.error || 'Error al registrar';
+                }
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = 'Error de conexión';
+            } finally {
+                buttons.forEach(btn => btn.disabled = false);
+            }
+        }
+    </script>
+</body>
+</html>
