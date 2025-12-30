@@ -1,0 +1,354 @@
+---
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Registros de Asistencia</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #333;
+            font-size: 2rem;
+        }
+        .back-link {
+            background: #5DD9C1;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(93, 217, 193, 0.4);
+        }
+        .contractors-list {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .contractor-btn {
+            padding: 15px 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: 2px solid #5DD9C1;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            color: #5DD9C1;
+        }
+        .contractor-btn:hover {
+            background: #5DD9C1;
+            color: white;
+        }
+        .contractor-btn.active {
+            background: #5DD9C1;
+            color: white;
+        }
+        .logs-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            padding: 25px;
+        }
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+        .logs-title {
+            font-size: 1.5rem;
+            color: #333;
+        }
+        .logs-count {
+            background: #e8e8e8;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .no-logs {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 1.1rem;
+        }
+        .logs-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .logs-table th, .logs-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .logs-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+        .logs-table tr:hover {
+            background: #f8f9fa;
+        }
+        .action-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+        .action-in {
+            background: #E0F7F4;
+            color: #2A9D8F;
+        }
+        .action-out {
+            background: #FCE4EC;
+            color: #C2185B;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .loading::after {
+            content: "";
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ""; }
+            40% { content: "."; }
+            60% { content: ".."; }
+            80%, 100% { content: "..."; }
+        }
+        .sort-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: #5DD9C1;
+            margin-left: 5px;
+        }
+        .sort-btn:hover {
+            text-decoration: underline;
+        }
+        .refresh-btn {
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            border: 2px solid #5DD9C1;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #5DD9C1;
+            color: white;
+            margin-left: 15px;
+        }
+        .refresh-btn:hover {
+            background: #4BC9B1;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(93, 217, 193, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Registros de Asistencia</h1>
+            <a href="/" class="back-link">Volver al Clock In/Out</a>
+        </header>
+
+        <div class="contractors-list" id="contractors-list">
+            <div class="loading">Cargando contractors</div>
+        </div>
+
+        <div class="logs-container">
+            <div class="logs-header">
+                <h2 class="logs-title" id="logs-title">Selecciona un contractor</h2>
+                <span class="logs-count" id="logs-count" style="display: none;">0 registros</span>
+            </div>
+            <div id="logs-content">
+                <p class="no-logs">Haz clic en un nombre para ver sus registros</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allData = [];
+        let currentContractor = null;
+        let sortOrder = 'desc'; // newest first by default
+
+        async function loadContractors() {
+            const listEl = document.getElementById('contractors-list');
+            listEl.innerHTML = '<div class="loading">Cargando contractors</div>';
+
+            try {
+                const response = await fetch('/api/logs');
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Logs API response:', data);
+
+                allData = data.data || [];
+                const contractors = data.contractors || [];
+
+                if (contractors.length === 0) {
+                    listEl.innerHTML = `
+                        <p class="no-logs">No hay contractors registrados aun. Haz clic en Clock In/Out en la pagina principal.</p>
+                        <button class="refresh-btn" onclick="loadContractors()">Actualizar</button>
+                    `;
+                    return;
+                }
+
+                listEl.innerHTML = contractors.map(contractor =>
+                    `<button class="contractor-btn" onclick="showLogs('${contractor}')">${contractor}</button>`
+                ).join('') + '<button class="refresh-btn" onclick="loadContractors()">Actualizar</button>';
+            } catch (error) {
+                console.error('Error loading contractors:', error);
+                listEl.innerHTML = `
+                    <p class="no-logs">Error al cargar contractors: ${error.message}</p>
+                    <button class="refresh-btn" onclick="loadContractors()">Reintentar</button>
+                `;
+            }
+        }
+
+        function showLogs(contractor) {
+            currentContractor = contractor;
+
+            // Update active button
+            document.querySelectorAll('.contractor-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent === contractor) {
+                    btn.classList.add('active');
+                }
+            });
+
+            const contractorData = allData.find(c => c.contractor === contractor);
+            const logs = contractorData?.logs || [];
+
+            document.getElementById('logs-title').textContent = `Registros de ${contractor}`;
+            document.getElementById('logs-count').style.display = 'inline-block';
+            document.getElementById('logs-count').textContent = `${logs.length} registros`;
+
+            if (logs.length === 0) {
+                document.getElementById('logs-content').innerHTML =
+                    '<p class="no-logs">No hay registros para este contractor</p>';
+                return;
+            }
+
+            // Sort logs by date
+            const sortedLogs = [...logs].sort((a, b) => {
+                const dateA = new Date(a.timestamp);
+                const dateB = new Date(b.timestamp);
+                return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+            });
+
+            const tableHTML = `
+                <table class="logs-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha <button class="sort-btn" onclick="toggleSort()">
+                                ${sortOrder === 'desc' ? '↓ Nuevo primero' : '↑ Antiguo primero'}
+                            </button></th>
+                            <th>Hora</th>
+                            <th>Accion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sortedLogs.map(log => {
+                            // Timestamp format: YYYY-MM-DDTHH:mm:ss PT
+                            const timestamp = log.timestamp;
+                            let dateStr = '';
+                            let timeStr = '';
+
+                            // Handle both old ISO format and new Pacific Time format
+                            if (timestamp.includes(' PT') || timestamp.includes(' PST')) {
+                                // New Pacific Time format: YYYY-MM-DDTHH:mm:ss PST
+                                const timezone = timestamp.includes(' PST') ? ' PST' : ' PT';
+                                const parts = timestamp.replace(timezone, '').split('T');
+                                const [year, month, day] = parts[0].split('-');
+                                timeStr = parts[1] + ' PST';
+                                const date = new Date(year, month - 1, day);
+                                dateStr = date.toLocaleDateString('es-ES', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                });
+                            } else {
+                                // Old ISO format
+                                const date = new Date(timestamp);
+                                dateStr = date.toLocaleDateString('es-ES', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                });
+                                timeStr = date.toLocaleTimeString('es-ES', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    second: '2-digit'
+                                });
+                            }
+                            const actionClass = log.action === 'in' ? 'action-in' : 'action-out';
+                            const actionText = log.action === 'in' ? 'Clock In' : 'Clock Out';
+
+                            return `
+                                <tr>
+                                    <td>${dateStr}</td>
+                                    <td>${timeStr}</td>
+                                    <td><span class="action-badge ${actionClass}">${actionText}</span></td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('logs-content').innerHTML = tableHTML;
+        }
+
+        function toggleSort() {
+            sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+            if (currentContractor) {
+                showLogs(currentContractor);
+            }
+        }
+
+        // Load contractors on page load
+        loadContractors();
+    </script>
+</body>
+</html>
